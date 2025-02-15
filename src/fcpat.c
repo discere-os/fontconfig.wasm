@@ -30,7 +30,7 @@ FcPatternCreate (void)
 {
     FcPattern	*p;
 
-    p = (FcPattern *) malloc (sizeof (FcPattern));
+    p = (FcPattern *) malloc (sizeof (FcPattern) + sizeof (FcPatternElt *));
     if (!p)
 	return 0;
     memset (p, 0, sizeof (FcPattern));
@@ -532,6 +532,13 @@ FcPatternObjectInsertElt (FcPattern *p, FcObject object)
 		e[p->size].values = NULL;
 		p->size++;
 	    }
+
+	    /*
+	     * The pointers stored here will never be used by fontconfig, but
+	     * it is intended to be useful for runtime memory leak checks such
+	     * as LeakSanitizer, Valgrind, Boehm GC, etc. to track references.
+	     */
+	    *(FcPatternElt **)(p + 1) = e;
 	}
 
 	e = FcPatternElts(p);
