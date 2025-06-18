@@ -20,6 +20,7 @@ def fcfont():
     return FcTestFont()
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_basic(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts, '.')
@@ -42,6 +43,7 @@ def test_basic(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_subdir(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts, 'a')
@@ -65,6 +67,7 @@ def test_subdir(fctest, fcfont):
         out_expected = f.read()
         assert out == out_expected
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_subdir_with_cache(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts, 'a')
@@ -89,6 +92,7 @@ def test_subdir_with_cache(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_with_dotfiles(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts, '.')
@@ -115,6 +119,7 @@ def test_with_dotfiles(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_with_dotdir(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts, '.a')
@@ -139,6 +144,7 @@ def test_with_dotdir(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_with_complicated_dir_structure(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts[0], Path('a') / 'a')
@@ -162,6 +168,7 @@ def test_with_complicated_dir_structure(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_subdir_with_out_of_date_cache(fctest, fcfont):
     fctest.setup()
     fctest.install_font([], 'a')
@@ -188,6 +195,7 @@ def test_subdir_with_out_of_date_cache(fctest, fcfont):
         assert out == out_expected
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_new_file_with_out_of_date_cache(fctest, fcfont):
     fctest.setup()
     fctest.install_font(fcfont.fonts[0], '.')
@@ -226,6 +234,7 @@ def test_keep_mtime(fctest, fcfont):
     assert before == after, f'mtime {before} was changed to {after}'
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 def test_multiple_caches(fctest, fcfont):
     extraconffile = NamedTemporaryFile(prefix='fontconfig.',
                                        suffix='.extra.conf',

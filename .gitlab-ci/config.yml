@@ -46,6 +46,7 @@ build_patterns:
       FC_BUILDSYS: meson
       FC_BUILD_TYPE: static
       FC_BUILD_ENABLED: "fontations"
+      FC_BUILD_DISABLED: "freetype"
 
 test_patterns:
   - name: "subproject-build shared"

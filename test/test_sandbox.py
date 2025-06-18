@@ -24,6 +24,7 @@ def fcfont():
     return FcTestFont()
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 @pytest.mark.skipif(not not os.getenv('EXEEXT'), reason='not working on Win32')
 @pytest.mark.skipif(not shutil.which('bwrap'), reason='No bwrap installed')
 def test_bz106618(fctest, fcfont):
@@ -67,6 +68,7 @@ def test_bz106618(fctest, fcfont):
     assert cmp_cache_before == cmp_cache_after
 
 
+@pytest.mark.skipif(os.getenv('HAVE_FREETYPE') == None, reason='Fontations does not support pcf test fonts')
 @pytest.mark.skipif(not not os.getenv('EXEEXT'), reason='not working on Win32')
 @pytest.mark.skipif(not shutil.which('bwrap'), reason='No bwrap installed')
 def test_different_content(fctest, fcfont):

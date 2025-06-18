@@ -35,6 +35,9 @@ math_dep = cc.find_library('m', required: false)
 
 conf = configuration_data()
 
+# FreeType dependency
+
+if get_option('freetype').enabled()
 freetype_dep = dependency('freetype2', method: 'pkg-config', version: freetype_req, required: false)
 
 # Give another shot using CMake
@@ -52,6 +55,7 @@ else
   else
     conf.set('FREETYPE_PCF_LONG_FAMILY_NAMES', false)
   endif
+endif
 endif
 
 jsonc_dep = dependency('json-c', required: false)
@@ -83,6 +87,15 @@ fontations = get_option('fontations')
 if (fontations.enabled())
   conf.set('ENABLE_FONTATIONS', 1)
   add_languages(['rust'], native: false, required : true)
+endif
+
+freetype = get_option('freetype')
+if freetype.disabled() and fontations.disabled()
+  error('One of FreeType or Fontations indexing backends must be enabled.')
+endif
+
+if (freetype.enabled())
+  conf.set('ENABLE_FREETYPE', 1)
 endif
 
 pkgmod = import('pkgconfig')
@@ -143,14 +156,6 @@ check_funcs = [
   ['localtime_r'],
 ]
 
-check_freetype_funcs = [
-  ['FT_Get_BDF_Property', {'dependencies': freetype_dep}],
-  ['FT_Get_PS_Font_Info', {'dependencies': freetype_dep}],
-  ['FT_Has_PS_Glyph_Names', {'dependencies': freetype_dep}],
-  ['FT_Get_X11_Font_Format', {'dependencies': freetype_dep}],
-  ['FT_Done_MM_Var', {'dependencies': freetype_dep}],
-]
-
 check_header_symbols = [
   ['posix_fadvise', 'fcntl.h']
 ]
@@ -177,7 +182,11 @@ add_project_arguments('-DHAVE_CONFIG_H', language: 'c')
 
 c_args = []
 
-deps = [freetype_dep, xml_dep]
+deps = [xml_dep]
+if get_option('freetype').enabled()
+  deps += [freetype_dep]
+endif
+
 incbase = include_directories('.', 'fc-lang')
 
 # For compatibility to autoconf (regardless of the usage in fontconfig)
@@ -226,6 +235,16 @@ endif
 conf.set('USE_ICONV', found_iconv)
 deps += [iconv_dep]
 
+if get_option('freetype').enabled()
+
+check_freetype_funcs = [
+  ['FT_Get_BDF_Property', {'dependencies': freetype_dep}],
+  ['FT_Get_PS_Font_Info', {'dependencies': freetype_dep}],
+  ['FT_Has_PS_Glyph_Names', {'dependencies': freetype_dep}],
+  ['FT_Get_X11_Font_Format', {'dependencies': freetype_dep}],
+  ['FT_Done_MM_Var', {'dependencies': freetype_dep}],
+]
+
 # We cannot try compiling against an internal dependency
 if freetype_dep.type_name() == 'internal'
   foreach func: check_freetype_funcs
@@ -234,6 +253,7 @@ if freetype_dep.type_name() == 'internal'
   endforeach
 else
   check_funcs += check_freetype_funcs
+endif
 endif
 
 foreach check : check_headers
@@ -494,11 +514,16 @@ alias_headers = custom_target('alias_headers',
                               command: [python3, makealias, join_paths(meson.current_source_dir(), 'src'), '@OUTPUT@', '@INPUT@'],
                              )
 
+if get_option('freetype').enabled()
 ft_alias_headers = custom_target('ft_alias_headers',
                                  output: ['fcftalias.h', 'fcftaliastail.h'],
                                  input: ['fontconfig/fcfreetype.h'],
                                  command: [python3, makealias, join_paths(meson.current_source_dir(), 'src'), '@OUTPUT@', '@INPUT@']
                                 )
+else
+ft_alias_headers = []
+endif
+
 
 tools_man_pages = []
 
@@ -623,6 +648,7 @@ summary({
   'Tools': not get_option('tools').disabled(),
   'iconv': found_iconv == 1,
   'XML backend': xmltype,
+  'FreeType support' : freetype,
   'Fontations support' : fontations
 }, section: 'General', bool_yn: true, list_sep: ', ')
 summary({

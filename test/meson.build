@@ -13,7 +13,6 @@ fetch_test_fonts = custom_target(
 )
 
 tests = [
-  ['test-bz89617.c', {'c_args': ['-DSRCDIR="@0@"'.format(meson.current_source_dir())]}],
   ['test-bz131804.c'],
   ['test-bz96676.c'],
   ['test-name-parse.c'],
@@ -25,12 +24,22 @@ tests = [
 ]
 tests_not_parallel = []
 
+# Test expects scanner to support font format the Fontations indexer does not understand.
+if get_option('freetype').enabled()
+tests += [['test-bz89617.c', {'c_args': ['-DSRCDIR="@0@"'.format(meson.current_source_dir())]}]]
+endif
+
 if host_machine.system() != 'windows'
   tests += [
     # FIXME: ['test-migration.c'],
-    ['test-bz106632.c', {'c_args': ['-DFONTFILE="@0@"'.format(join_paths(meson.current_source_dir(), '4x6.pcf'))]}],
     ['test-issue107.c'], # FIXME: fails on mingw
   ]
+
+  # Test expects scanner to support font format the Fontations indexer does not understand.
+  if get_option('freetype').enabled()
+    ['test-bz106632.c', {'c_args': ['-DFONTFILE="@0@"'.format(join_paths(meson.current_source_dir(), '4x6.pcf'))]}]
+  endif
+
   tests_not_parallel += [
     # FIXME: this needs NotoSans-hinted.zip font downloaded and unpacked into test build directory! see run-test.sh
     ['test-crbug1004254.c', {'dependencies': dependency('threads')}], # for pthread
@@ -81,7 +90,7 @@ endif
 
 fs = import('fs')
 
-if conf.get('FREETYPE_PCF_LONG_FAMILY_NAMES')
+if get_option('freetype').enabled() and conf.get('FREETYPE_PCF_LONG_FAMILY_NAMES')
   out_expected = fs.copyfile('out.expected-long-family-names',
                              'out.expected')
 else
@@ -90,14 +99,18 @@ else
 endif
 
 if pytest.found()
+  environment = [
+    'builddir=@0@'.format(meson.project_build_root()),
+    'srcdir=@0@'.format(meson.project_source_root()),
+    'EXEEXT=@0@'.format(conf.get('EXEEXT')),
+    'CC=@0@'.format(meson.get_compiler('c').cmd_array()[0]),
+  ]
+  if get_option('freetype').enabled()
+    environment += ['HAVE_FREETYPE=1']
+  endif
   test('pytest', pytest, args: ['--tap'],
        workdir: meson.current_source_dir(),
-       env: [
-         'builddir=@0@'.format(meson.project_build_root()),
-         'srcdir=@0@'.format(meson.project_source_root()),
-         'EXEEXT=@0@'.format(conf.get('EXEEXT')),
-         'CC=@0@'.format(meson.get_compiler('c').cmd_array()[0]),
-       ],
+       env: environment,
        protocol: 'tap',
        timeout: 600,
        depends: fetch_test_fonts)

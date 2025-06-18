@@ -686,6 +686,9 @@ no|yes)
 	;;
 esac
 
+# Enable by default in Autotools build, see meson.optoins for how to disable FreeType.
+AC_DEFINE([ENABLE_FREETYPE], [1], [Default enable FreeType build, for disabling, see FontConfig meson build.])
+
 TEMPLATEDIR=${templatedir}
 BASECONFIGDIR=${baseconfigdir}
 CONFIGDIR=${configdir}

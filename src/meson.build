@@ -27,7 +27,6 @@ fc_sources = files([
   'fcdefault.c',
   'fcdir.c',
   'fcformat.c',
-  'fcfreetype.c',
   'fcfs.c',
   'fcptrlist.c',
   'fchash.c',
@@ -44,10 +43,11 @@ fc_sources = files([
   'fcstr.c',
   'fcweight.c',
   'fcxml.c',
-  'ftglue.c',
 ])
 
-
+if get_option('freetype').enabled()
+fc_sources += files([ 'ftglue.c', 'fcfreetype.c'])
+endif
 
 fcobjshash_h = cc.preprocess('fcobjshash.gperf.h', include_directories: incbase)
 fcobjshash_gperf = custom_target(
