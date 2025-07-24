@@ -22,7 +22,9 @@
 
 #include "fcint.h"
 
+#if ENABLE_FREETYPE
 #include "fcftint.h"
+#endif
 
 /* Objects MT-safe for readonly access. */
 
@@ -304,8 +306,12 @@ FcValueHash (const FcValue *v)
     case FcTypeCharSet:
 	return (FcChar32)FcValueCharSet (v)->num;
     case FcTypeFTFace:
+#if ENABLE_FREETYPE
 	return FcStringHash ((const FcChar8 *)((FT_Face)v->u.f)->family_name) ^
 	       FcStringHash ((const FcChar8 *)((FT_Face)v->u.f)->style_name);
+#else
+    return 0;
+#endif
     case FcTypeLangSet:
 	return FcLangSetHash (FcValueLangSet (v));
     case FcTypeRange:
@@ -867,6 +873,7 @@ FcPatternAddCharSet (FcPattern *p, const char *object, const FcCharSet *c)
     return FcPatternObjectAddCharSet (p, FcObjectFromName (object), c);
 }
 
+#if ENABLE_FREETYPE
 FcBool
 FcPatternAddFTFace (FcPattern *p, const char *object, const FT_Face f)
 {
@@ -876,6 +883,7 @@ FcPatternAddFTFace (FcPattern *p, const char *object, const FT_Face f)
     v.u.f = (void *)f;
     return FcPatternAdd (p, object, v, FcTrue);
 }
+#endif
 
 FcBool
 FcPatternObjectAddLangSet (FcPattern *p, FcObject object, const FcLangSet *ls)
@@ -1085,6 +1093,7 @@ FcPatternObjectGetCharSet (const FcPattern *p, FcObject object, int id, FcCharSe
     return FcResultMatch;
 }
 
+#if ENABLE_FREETYPE
 FcResult
 FcPatternGetFTFace (const FcPattern *p, const char *object, int id, FT_Face *f)
 {
@@ -1099,6 +1108,7 @@ FcPatternGetFTFace (const FcPattern *p, const char *object, int id, FT_Face *f)
     *f = (FT_Face)v.u.f;
     return FcResultMatch;
 }
+#endif
 
 FcResult
 FcPatternGetLangSet (const FcPattern *p, const char *object, int id, FcLangSet **ls)
@@ -1578,5 +1588,7 @@ FcValueListSerialize (FcSerialize *serialize, const FcValueList *vl)
 
 #define __fcpat__
 #include "fcaliastail.h"
+#if ENABLE_FREETYPE
 #include "fcftaliastail.h"
+#endif
 #undef __fcpat__

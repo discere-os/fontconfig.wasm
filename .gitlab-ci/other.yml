@@ -88,19 +88,20 @@ meson vs2019 x86:
     - rustc --version
     - bindgen --version
   script:
-    - CERT_PATH=$(python3 -m certifi) && export SSL_CERT_FILE=${CERT_PATH} && export REQUESTS_CA_BUNDLE=${CERT_PATH} && meson setup -Diconv=enabled $MESON_FONTATIONS_ARG build
+    - CERT_PATH=$(python3 -m certifi) && export SSL_CERT_FILE=${CERT_PATH} && export REQUESTS_CA_BUNDLE=${CERT_PATH} && meson setup -Diconv=enabled $MESON_FONTATIONS_ARG $MESON_FREETYPE_ARG build
     - meson compile --verbose -C build
     - meson test -C build
 
 meson macos test:
   extends: ".meson macos test"
   variables:
-    MESON_FONTATIONS_ARG: "-Dfontations=disabled"
+    MESON_FONTATIONS_ARG: -Dfontations=disabled
 
 meson macos test fontations:
   extends: ".meson macos test"
   variables:
-    MESON_FONTATIONS_ARG: "-Dfontations=enabled"
+    MESON_FONTATIONS_ARG: -Dfontations=enabled
+    MESON_FREETYPE_ARG: -Dfreetype=disabled
 
 # msys infrastructure is a bit broken, disable for now
 meson msys2:

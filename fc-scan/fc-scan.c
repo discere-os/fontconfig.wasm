@@ -34,7 +34,9 @@
 #endif
 
 #include <fontconfig/fontconfig.h>
+#if ENABLE_FREETYPE
 #include <fontconfig/fcfreetype.h>
+#endif
 
 #include <locale.h>
 #include <stdio.h>

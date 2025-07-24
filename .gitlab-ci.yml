@@ -47,9 +47,9 @@ variables:
 # changing these will force rebuilding the associated image
 # Note: these tags have no meaning and are not tied to a particular
 # fontconfig version
-  ALPINE_TAG:    '2025-07-02.2-44bc6e2a4678'
-  FEDORA_TAG:    '2025-07-02.2-594ebb6f3472'
-  FREEBSD_TAG:   '2025-07-02.2-6658aea3e577'
+  ALPINE_TAG:    '2025-07-02.2-41facd25324b'
+  FEDORA_TAG:    '2025-07-02.2-e5655f53fc89'
+  FREEBSD_TAG:   '2025-07-02.2-f65635d2a529'
 
   ALPINE_EXEC:   'bash .gitlab-ci/alpine-install.sh'
   FEDORA_EXEC:   'bash .gitlab-ci/fedora-install.sh'
@@ -495,6 +495,7 @@ build-meson static fontations:
     FC_BUILDSYS: meson
     FC_BUILD_TYPE: static
     FC_BUILD_ENABLED: fontations
+    FC_BUILD_DISABLED: freetype
   needs:
     - fedora:rawhide@container-prep
 

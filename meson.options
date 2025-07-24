@@ -18,6 +18,8 @@ option('xml-backend', type: 'combo', choices: ['auto', 'expat', 'libxml2'], valu
   description: 'Select xml backend to read config')
 option('fontations', type: 'feature', value: 'disabled',
   description: 'Use Fontations (https://github.com/googlefonts/fontations) for indexing.')
+option('freetype', type: 'feature', value: 'enabled',
+  description: 'Require FreeType, if set to false, FreeType-specific functions (see documentation) are not available and the ability to store an FTFace on a pattern does not work.')
 
 # Defaults
 option('default-hinting', type: 'combo', choices: ['noinstall', 'none', 'slight', 'medium', 'full'], value: 'slight',

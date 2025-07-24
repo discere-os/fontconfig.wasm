@@ -34,7 +34,10 @@
 #endif
 
 #include <fontconfig/fontconfig.h>
+
+#if ENABLE_FREETYPE
 #include <fontconfig/fcfreetype.h>
+#endif
 
 #if ENABLE_FONTATIONS
 #  include <fontconfig/fcfontations.h>
@@ -161,7 +164,14 @@ main (int argc, char **argv)
 
     fs = FcFontSetCreate();
 
-    unsigned int (*query_function) (const FcChar8 *, unsigned int, FcBlanks *, int *, FcFontSet *) = FcFreeTypeQueryAll;
+    unsigned int (*query_function) (const FcChar8 *, unsigned int, FcBlanks *, int *, FcFontSet *) =
+#if ENABLE_FREETYPE
+    FcFreeTypeQueryAll;
+#else
+    // See meson.build, one of the two options must be available.
+    FcFontationsQueryAll;
+#endif
+
 #if ENABLE_FONTATIONS
     if (getenv ("FC_FONTATIONS") != NULL) {
 	query_function = FcFontationsQueryAll;
