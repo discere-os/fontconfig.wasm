@@ -23,14 +23,19 @@
  */
 
 use skrifa::string::LocalizedString;
-use skrifa::{string::StringId, MetadataProvider};
+use skrifa::{MetadataProvider, string::StringId};
 
 use fcint_bindings::{
-    FC_FAMILYLANG_OBJECT, FC_FAMILY_OBJECT, FC_FULLNAMELANG_OBJECT, FC_FULLNAME_OBJECT,
-    FC_INVALID_OBJECT, FC_POSTSCRIPT_NAME_OBJECT, FC_STYLELANG_OBJECT, FC_STYLE_OBJECT,
+    FC_FAMILY_OBJECT, FC_FAMILYLANG_OBJECT, FC_FULLNAME_OBJECT, FC_FULLNAMELANG_OBJECT,
+    FC_GENERIC_FAMILY_OBJECT, FC_INVALID_OBJECT, FC_POSTSCRIPT_NAME_OBJECT, FC_STYLE_OBJECT,
+    FC_STYLELANG_OBJECT,
+};
+use fontconfig_bindings::{
+    FC_FAMILY_EMOJI, FC_FAMILY_MATH, FC_FAMILY_MONO, FC_FAMILY_SANS, FC_FAMILY_SERIF,
+    FC_FAMILY_UNKNOWN,
 };
 
-use crate::{name_records::FcSortedNameRecords, FcPatternBuilder, InstanceMode, PatternElement};
+use crate::{FcPatternBuilder, InstanceMode, PatternElement, name_records::FcSortedNameRecords};
 use read_fonts::{FontRef, TableProvider};
 use std::ffi::CString;
 
@@ -198,11 +203,26 @@ pub fn add_names(font: &FontRef, instance_mode: InstanceMode, pattern: &mut FcPa
                 if already_encountered_names.contains(&(object_ids.0, normalized_name.clone())) {
                     continue;
                 }
-                already_encountered_names.insert((object_ids.0, normalized_name));
+                already_encountered_names.insert((object_ids.0, normalized_name.clone()));
                 pattern.append_element(PatternElement::new(object_ids.0, name.into()));
                 // Postscriptname for example does not attach a language.
                 if object_ids.1 != FC_INVALID_OBJECT as i32 {
                     pattern.append_element(PatternElement::new(object_ids.1, language.into()));
+                }
+                if object_ids.0 == FC_FAMILY_OBJECT as i32 {
+                    let s = normalized_name;
+                    let generic_family: i32 = match s {
+                        s if s.contains("mono") => FC_FAMILY_MONO,
+                        s if s.contains("sans") => FC_FAMILY_SANS,
+                        s if s.contains("serif") => FC_FAMILY_SERIF,
+                        s if s.contains("emoji") => FC_FAMILY_EMOJI,
+                        s if s.contains("math") => FC_FAMILY_MATH,
+                        _ => FC_FAMILY_UNKNOWN,
+                    } as i32;
+                    pattern.append_element(PatternElement::new(
+                        FC_GENERIC_FAMILY_OBJECT as i32,
+                        generic_family.into(),
+                    ))
                 }
             }
         }
