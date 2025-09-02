@@ -1790,6 +1790,8 @@ FcConfigAdd (FcValueListPtr *head,
     FcValueListPtr *prev, l, last;
     FcValueBinding  sameBinding;
 
+    if (!newp)
+	return FcFalse;
     if (position)
 	sameBinding = position->binding;
     else

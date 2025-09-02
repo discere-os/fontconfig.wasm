@@ -2074,6 +2074,31 @@ FcFreeTypeQueryFaceInternal (const FT_Face   face,
 	if (!FcPatternObjectAddString (pat, FC_FONT_WRAPPER_OBJECT, wrapper))
 	    goto bail2;
 
+    {
+	FcPatternElt *elt;
+	FcValueListPtr l;
+
+	elt = FcPatternObjectFindElt (pat, FC_FAMILY_OBJECT);
+	for (l = FcPatternEltValues (elt); l; l = FcValueListNext (l)) {
+	    FcValue v = FcValueCanonicalize (&l->value);
+	    int generic_family = FC_FAMILY_UNKNOWN;
+
+	    if (v.type == FcTypeString) {
+		if (FcStrStrIgnoreCase (v.u.s, (FcChar8 *)"mono"))
+		    generic_family = FC_FAMILY_MONO;
+		else if (FcStrStrIgnoreCase (v.u.s, (FcChar8 *)"sans"))
+		    generic_family = FC_FAMILY_SANS;
+		else if (FcStrStrIgnoreCase (v.u.s, (FcChar8 *)"serif"))
+		    generic_family = FC_FAMILY_SERIF;
+		else if (FcStrStrIgnoreCase (v.u.s, (FcChar8 *)"emoji"))
+		    generic_family = FC_FAMILY_EMOJI;
+		else if (FcStrStrIgnoreCase (v.u.s, (FcChar8 *)"math"))
+		    generic_family = FC_FAMILY_MATH;
+	    }
+	    FcPatternObjectAddInteger(pat, FC_GENERIC_FAMILY_OBJECT, generic_family);
+	}
+    }
+
     /*
      * Drop our reference to the charset
      */
