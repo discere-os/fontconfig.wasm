@@ -3107,7 +3107,7 @@ FcConfigParseAndLoadDir (FcConfig      *config,
 	    }
 	}
     }
-    if (ret) {
+    if (ret && files->num > 0) {
 	int i;
 	qsort (files->strs, files->num, sizeof (FcChar8 *),
 	       (int (*) (const void *, const void *))FcSortCmpStr);

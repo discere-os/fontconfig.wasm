@@ -25,6 +25,7 @@ type="shared"
 arch=""
 buildopt=()
 optimization=""
+sanitize=""
 SRCDIR=$MyPWD
 export MAKE=${MAKE:-make}
 export BUILD_ID=${BUILD_ID:-fontconfig-$$}
@@ -44,10 +45,11 @@ if [ "x$FC_DISTRO_NAME" = "x" ]; then
     sleep 3
 fi
 
-while getopts a:cCe:d:hINO:s:St:X: OPT
+while getopts a:A:cCe:d:hINO:s:St:X: OPT
 do
     case $OPT in
         'a') arch=$OPTARG ;;
+        'A') sanitize=$OPTARG ; optimization="g" ;;
         'c') distcheck=1 ;;
         'C') disable_check=1 ;;
         'e') enable+=($OPTARG) ;;
@@ -61,9 +63,10 @@ do
         'X') backend=$OPTARG ;;
         'h')
             set +x
-            echo "Usage: $0 [-a ARCH] [-c] [-C] [-e OPT] [-d OPT] [-h] [-I] [-N] [-O N] [-s BUILDSYS] [-S] [-t BUILDTYPE] [-X XMLBACKEND]"
+            echo "Usage: $0 [-a ARCH] [-A SANITIZER] [-c] [-C] [-e OPT] [-d OPT] [-h] [-I] [-N] [-O N] [-s BUILDSYS] [-S] [-t BUILDTYPE] [-X XMLBACKEND]"
             echo "Options:"
             echo "  -a ARCH        Use ARCH for cross-compile. Depends on BUILDSYS"
+            echo "  -A SANITIZER   Use the address sanitizer. Take effect on meson only"
             echo "  -c             Run distcheck"
             echo "  -C             Do not run unit tests"
             echo "  -e OPT         Enable OPT feature to build"
@@ -242,6 +245,11 @@ elif [ x"$buildsys" == "xmeson" ]; then
         fi
     fi
     buildopt+=(--default-library=$type)
+    if [ -n "$sanitize" ]; then
+        buildopt+=(-Db_sanitize=$sanitize)
+        # for memory sanitizer
+        buildopt+=(-Db_lundef=false)
+    fi
     if [ $clean_build -eq 1 ]; then
         rm -rf "$BUILDDIR" "$PREFIX" || :
     fi
