@@ -1,0 +1,36 @@
+{
+  "name": "fontconfig-wasm-build",
+  "version": "2.17.1",
+  "type": "module",
+  "private": true,
+  "description": "Build tools and tests for fontconfig.wasm",
+  "scripts": {
+    "build": "./build-wasm.sh Release ON",
+    "build:debug": "./build-wasm.sh Debug ON", 
+    "build:fallback": "./build-wasm.sh Release OFF",
+    "test": "node test/wasm-integration-test.js",
+    "benchmark": "node benchmark/fontconfig-benchmark.js",
+    "clean": "rm -rf build install dist",
+    "validate": "npm run build && npm run test && npm run benchmark"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superstruct/superstruct.git",
+    "directory": "fontconfig.wasm"
+  },
+  "keywords": [
+    "fontconfig",
+    "webassembly",
+    "wasm",
+    "fonts",
+    "graphics"
+  ],
+  "author": "superstruct ltd, New Zealand",
+  "license": "MIT"
+}
