@@ -1,3 +1,13 @@
+# @discere-os/fontconfig.wasm
+
+WebAssembly port of Fontconfig - Font configuration and customization library.
+
+[![CI/CD](https://github.com/discere-os/discere-nucleus/actions/workflows/fontconfig-wasm-ci.yml/badge.svg)](https://github.com/discere-os/discere-nucleus/actions)
+[![JSR](https://jsr.io/badges/@discere-os/fontconfig.wasm)](https://jsr.io/@discere-os/fontconfig.wasm)
+[![npm version](https://badge.fury.io/js/@discere-os%2Ffontconfig.wasm.svg)](https://badge.fury.io/js/@discere-os%2Ffontconfig.wasm)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](COPYING)
+[![Status](https://img.shields.io/badge/status-alpha-orange.svg)](https://github.com/discere-os/discere-nucleus)
+
 # Fontconfig
 
 Font configuration and customization library
