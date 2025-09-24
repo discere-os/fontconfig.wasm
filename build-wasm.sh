@@ -103,11 +103,10 @@ configure_build() {
         --buildtype="$buildtype" \
         -Dxml-backend=expat \
         -Dfontations=disabled \
-        -Djson-c=disabled \
-        -Dtests=false \
-        -Dtools=false \
-        -Ddoc=false \
-        -Dnls=false
+        -Dtests=disabled \
+        -Dtools=disabled \
+        -Ddoc=disabled \
+        -Dnls=disabled
         
     log "✓ Meson configuration completed"
 }
