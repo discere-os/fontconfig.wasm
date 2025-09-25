@@ -511,6 +511,7 @@ tools_man_pages = []
 subdir('fc-case')
 subdir('fc-lang')
 subdir('src')
+subdir('wasm')
 
 if get_option('fontations').enabled()
   subdir('fc-fontations')

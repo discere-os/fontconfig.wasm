@@ -1,0 +1,13 @@
+{
+  "name": "@discere-os/fontconfig.wasm",
+  "exports": {
+    ".": "./",
+    "./side": "./install/wasm/fontconfig-side.wasm",
+    "./main": "./install/wasm/fontconfig-main.js"
+  },
+  "tasks": {
+    "build:main:meson": "meson setup build-main --cross-file=scripts/emscripten.cross -Dbuildtype=release --prefix=$PWD/install -Dlibdir=wasm -Dbindir=wasm && meson compile -C build-main fontconfig-main && meson install -C build-main",
+    "build:side:meson": "meson setup build-side --cross-file=scripts/emscripten.cross -Dbuildtype=release --prefix=$PWD/install -Dlibdir=wasm -Dbindir=wasm -Dc_args='-msimd128' -Dc_link_args='-sSIDE_MODULE=2 -fPIC -O3 -flto' && meson compile -C build-side fontconfig-side && meson install -C build-side && python3 scripts/postinstall.py $PWD/install",
+    "build:wasm:meson": "deno task build:main:meson && deno task build:side:meson"
+  }
+}
