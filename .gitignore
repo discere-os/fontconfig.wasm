@@ -31,3 +31,6 @@ build-logs/
 # Development tools
 .vscode/
 .idea/
+
+# Build logs
+*.log

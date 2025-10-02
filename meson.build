@@ -64,14 +64,24 @@ xml_dep = dependency('', required: false)
 xmlbackend = get_option('xml-backend')
 xmltype = ''
 if xmlbackend == 'auto' or xmlbackend == 'expat'
-  # Linking expat should not be so difficult... see: https://github.com/mesonbuild/meson/issues/10516
-  xml_dep = dependency('expat', required: false)
-  if not xml_dep.found()
-    xml_dep = cc.find_library('expat', required : false)
-    if not xml_dep.found() and xmlbackend == 'expat'
-      xml_dep = dependency('expat', method: 'system', required: true, fallback: ['expat', 'expat_dep'])
-    else
-      xmltype = 'expat'
+  # WASM: Use static libexpat.a directly to avoid system library conflicts
+  expat_static_path = '../gtk.wasm/install/lib/libexpat.a'
+  if fs.exists(expat_static_path)
+    xml_dep = declare_dependency(
+      link_args: [expat_static_path],
+      include_directories: include_directories('../gtk.wasm/install/include')
+    )
+    xmltype = 'expat'
+  else
+    # Fallback to system discovery if static library not found
+    xml_dep = dependency('expat', required: false)
+    if not xml_dep.found()
+      xml_dep = cc.find_library('expat', required : false)
+      if not xml_dep.found() and xmlbackend == 'expat'
+        xml_dep = dependency('expat', method: 'system', required: true, fallback: ['expat', 'expat_dep'])
+      else
+        xmltype = 'expat'
+      endif
     endif
   endif
 endif
@@ -511,7 +521,6 @@ tools_man_pages = []
 subdir('fc-case')
 subdir('fc-lang')
 subdir('src')
-subdir('wasm')
 
 if get_option('fontations').enabled()
   subdir('fc-fontations')
@@ -542,6 +551,9 @@ fontconfig_dep = declare_dependency(link_with: libfontconfig,
   include_directories: incbase,
   dependencies: deps,
 )
+
+# Build WASM modules after fontconfig_dep is available
+subdir('wasm')
 
 pkgmod.generate(libfontconfig,
   description: 'Font configuration and customization library',

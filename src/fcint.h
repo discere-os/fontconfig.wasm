@@ -31,6 +31,10 @@
 
 #include "fcstdint.h"
 
+#ifdef __EMSCRIPTEN__
+#include "../wasm/emscripten_compat.h"
+#endif
+
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
