@@ -28,6 +28,7 @@ fc_side_link_args = [
   '-fPIC',
   '-O3',
   '-flto',
+  '-sERROR_ON_UNDEFINED_SYMBOLS=0',  # Host provides dependencies (expat, freetype, etc.)
   '-sEXPORTED_FUNCTIONS=["_fontconfig_wasm_version"]',
 ]
 
