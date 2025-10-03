@@ -1,0 +1,44 @@
+{
+  "wasm:freetype": {
+    "version": "^2.13.0",
+    "symbols": {
+      "required": [
+        "FT_Init_FreeType",
+        "FT_Done_FreeType",
+        "FT_New_Face",
+        "FT_Done_Face",
+        "FT_Get_Char_Index"
+      ]
+    },
+    "loading": "eager",
+    "fallback": null
+  },
+  "wasm:libexpat": {
+    "version": "^2.5.0",
+    "symbols": {
+      "required": [
+        "XML_ParserCreate",
+        "XML_ParserFree",
+        "XML_Parse",
+        "XML_SetElementHandler"
+      ]
+    },
+    "loading": "eager",
+    "fallback": null
+  },
+  "wasm:libc": {
+    "version": "*",
+    "symbols": {
+      "required": [
+        "malloc",
+        "free",
+        "realloc",
+        "strcmp",
+        "strcpy",
+        "strlen"
+      ]
+    },
+    "loading": "eager",
+    "fallback": null
+  }
+}
