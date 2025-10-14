@@ -1,321 +1,124 @@
-name: FontConfig WASM CI
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [wasm]
+    branches: [ wasm ]
+    tags: [ 'v*' ]
   pull_request:
-    branches: [wasm]
-  release:
-    types: [created]
-
-env:
-  EMSCRIPTEN_VERSION: '4.0.14'
-  NODE_VERSION: '22'
+    branches: [ wasm ]
 
 jobs:
-  build:
-    name: Build & Test FontConfig WASM
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        config: [Release, Debug]
-        simd: [ON, OFF]
-      fail-fast: false
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Setup Emscripten SDK
-        uses: mymindstorm/setup-emsdk@v14
-        with:
-          version: ${{ env.EMSCRIPTEN_VERSION }}
-          actions-cache-folder: 'emsdk-cache'
-          no-cache: false
-          update: false
-          
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            meson \
-            ninja-build \
-            pkg-config \
-            python3-pip \
-            gperf
-          pip3 install meson
-          
-      - name: Setup ecosystem dependencies
-        run: |
-          # Create dependency directories
-          mkdir -p deps
-          
-          # Link to ecosystem dependencies (would be actual builds in real environment)
-          # For CI, we'll create mock dependency structures
-          mkdir -p deps/freetype/{include/freetype2,lib/pkgconfig}
-          mkdir -p deps/expat/{include,lib/pkgconfig}
-          
-          # Create mock pkg-config files for testing
-          cat > deps/freetype/lib/pkgconfig/freetype2.pc << 'EOF'
-          Name: FreeType 2
-          Description: Font engine
-          Version: 2.13.0
-          Requires:
-          Libs: -L${libdir} -lfreetype
-          Cflags: -I${includedir}/freetype2
-          EOF
-          
-          cat > deps/expat/lib/pkgconfig/expat.pc << 'EOF'
-          Name: expat
-          Description: XML parser library
-          Version: 2.6.0
-          Libs: -L${libdir} -lexpat
-          Cflags: -I${includedir}
-          EOF
-          
-          # Set environment for dependencies
-          echo "FREETYPE_ROOT=$PWD/deps/freetype" >> $GITHUB_ENV
-          echo "EXPAT_ROOT=$PWD/deps/expat" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$PWD/deps/freetype/lib/pkgconfig:$PWD/deps/expat/lib/pkgconfig" >> $GITHUB_ENV
-          
-      - name: Configure build
-        run: |
-          # Set SIMD flags based on matrix
-          SIMD_FLAGS=""
-          if [ "${{ matrix.simd }}" = "ON" ]; then
-            SIMD_FLAGS="-msimd128"
-            echo "Building with SIMD acceleration"
-          else
-            echo "Building fallback version"
-          fi
-          
-          # Configure with meson
-          meson setup build \
-            --cross-file=wasm-cross.ini \
-            --prefix=$PWD/install \
-            --buildtype=${{ matrix.config == 'Release' && 'release' || 'debug' }} \
-            -Dxml-backend=expat \
-            -Dfontations=disabled \
-            -Djson-c=disabled \
-            -Dtests=false \
-            -Dtools=false \
-            -Ddoc=false \
-            -Dnls=false
-            
-      - name: Build library
-        run: |
-          meson compile -C build -j$(nproc)
-          meson install -C build
-          
-      - name: Build WASM module
-        run: |
-          chmod +x build-wasm.sh
-          ./build-wasm.sh ${{ matrix.config }} ${{ matrix.simd }}
-          
-      - name: Validate build outputs
-        run: |
-          echo "Checking build artifacts..."
-          ls -la dist/
-          
-          # Check required files exist
-          if [ -f "dist/fontconfig.js" ]; then
-            echo "✓ Main WASM module found"
-          else
-            echo "✗ Main WASM module missing"
-            exit 1
-          fi
-          
-          if [ -f "dist/fontconfig.wasm" ]; then
-            echo "✓ WASM binary found"
-          else
-            echo "✗ WASM binary missing" 
-            exit 1
-          fi
-          
-          if [ -f "dist/fontconfig.d.ts" ]; then
-            echo "✓ TypeScript definitions found"
-          else
-            echo "✗ TypeScript definitions missing"
-            exit 1
-          fi
-          
-          # Check SIMD build if enabled
-          if [ "${{ matrix.simd }}" = "ON" ] && [ -f "dist/fontconfig-simd.js" ]; then
-            echo "✓ SIMD module found"
-          elif [ "${{ matrix.simd }}" = "ON" ]; then
-            echo "✗ SIMD module missing"
-            exit 1
-          fi
-          
-      - name: Install test dependencies
-        run: |
-          npm install
-          
-      - name: Run integration tests
-        run: |
-          echo "Running WASM integration tests..."
-          npm run test
-          
-      - name: Run performance benchmarks
-        if: matrix.config == 'Release' && matrix.simd == 'ON'
-        run: |
-          echo "Running performance benchmarks..."
-          npm run benchmark >> $GITHUB_STEP_SUMMARY
-          
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: fontconfig-wasm-${{ matrix.config }}-simd-${{ matrix.simd }}
-          path: |
-            dist/
-            install/
-          retention-days: 30
-
-  integration:
-    name: Ecosystem Integration Tests
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.event_name != 'release'
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: fontconfig-wasm-Release-simd-ON
-          path: dist/
-          
-      - name: Test ecosystem integration
-        run: |
-          echo "Testing integration with graphics ecosystem..."
-          echo "✓ fontconfig.wasm ready for cairo.wasm integration"
-          echo "✓ fontconfig.wasm ready for pango.wasm integration"
-          echo "✓ fontconfig.wasm ready for gtk.wasm integration"
-          
-          # In a real environment, this would test actual integration
-          # with other WASM ecosystem libraries
-          
-  quality:
-    name: Code Quality & Security
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Check for security issues
-        run: |
-          echo "Checking for security issues in WASM build..."
-          # Check for hardcoded secrets or security issues
-          if grep -r "password\|secret\|key" --exclude-dir=.git --exclude="*.md" --exclude="*.yml" .; then
-            echo "⚠️ Potential security issues found"
-          else
-            echo "✓ No obvious security issues detected"
-          fi
-          
-      - name: Validate file permissions
-        run: |
-          echo "Checking file permissions..."
-          find . -type f -executable -name "*.js" -o -name "*.json" -o -name "*.md" | while read file; do
-            echo "⚠️ Unexpected executable: $file"
-          done || echo "✓ File permissions look good"
-          
-      - name: Check documentation
-        run: |
-          echo "Checking documentation completeness..."
-          required_docs=("README.md" "docs/ai/fontconfig-wasm-technical-analysis.md")
-          
-          for doc in "${required_docs[@]}"; do
-            if [ -f "$doc" ]; then
-              echo "✓ $doc found"
-            else
-              echo "✗ $doc missing"
-              exit 1
-            fi
-          done
-
-  release:
-    name: Release Package
-    needs: [build, integration, quality]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'release'
-    
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-          
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
-          
-      - name: Prepare release package
-        run: |
-          echo "Preparing release package..."
-          
-          # Copy optimized release build
-          cp -r artifacts/fontconfig-wasm-Release-simd-ON/dist/* .
-          
-          # Create release archive
-          tar -czf fontconfig-wasm-${{ github.event.release.tag_name }}.tar.gz \
-            dist/ \
-            docs/ \
-            README.md \
-            package.json
-            
-      - name: Upload release assets
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: fontconfig-wasm-${{ github.event.release.tag_name }}.tar.gz
-          asset_name: fontconfig-wasm-${{ github.event.release.tag_name }}.tar.gz
-          asset_content_type: application/gzip
-          
-      - name: Publish to NPM
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          # Would publish to NPM registry
-          echo "Would publish to NPM: @wasm-ecosystem/fontconfig@${{ github.event.release.tag_name }}"
-          # npm publish --access=public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-  deploy-cloudflare-release:
-    name: Deploy Release to Cloudflare R2
-    runs-on: ubuntu-latest
-    needs: [build]
-    if: startsWith(github.ref, 'refs/tags/v')
+  test:
+    name: Test Suite (Deno)
+    runs-on: [self-hosted, docker, wasm, emscripten]
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main-b23d443
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download SIMD release build
+      - name: Type check
+        run: deno check src/lib/index.ts
+
+      - name: Build WASM modules with Meson
+        run: deno task build:wasm
+
+      - name: Run Deno tests
+        run: deno task test
+
+      - name: Run benchmarks
+        run: deno task bench
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-modules
+          path: |
+            install/wasm/
+          retention-days: 7
+
+  build:
+    name: Build Distribution
+    runs-on: [self-hosted, docker, wasm, emscripten]
+    needs: test
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main-b23d443
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build WASM modules
+        run: deno task build:wasm
+
+      - name: Fix artifact permissions
+        run: |
+          # Ensure artifacts are readable by runner (files created as root in container)
+          sudo chown -R $(id -u):$(id -g) install/ || chown -R $(id -u):$(id -g) install/
+          chmod -R u+rw,go+r install/
+
+      - name: Generate WASM Build Summary
+        run: |
+          echo "# 📦 WASM Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Build artifacts analysis
+          if [[ -f "install/wasm/fontconfig-side.wasm" && -f "install/wasm/fontconfig-main" ]]; then
+            SIDE_SIZE=$(stat -c%s "install/wasm/fontconfig-side.wasm" 2>/dev/null || stat -f%z "install/wasm/fontconfig-side.wasm")
+
+            echo "## File Sizes" >> $GITHUB_STEP_SUMMARY
+            echo "| Module | Size |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|------|" >> $GITHUB_STEP_SUMMARY
+            echo "| SIDE_MODULE | $(numfmt --to=iec $SIDE_SIZE 2>/dev/null || echo "${SIDE_SIZE} bytes") |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Build artifacts not found" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Build environment info
+          echo "## Build Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Emscripten**: \`$(emcc --version | head -n1 | cut -d' ' -f2)\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Meson**: \`$(meson --version)\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deno**: \`$(deno --version | head -n1 | cut -d' ' -f2)\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Runner**: \`$(uname -m)\` $(uname -s)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-package
+          path: |
+            install/
+          retention-days: 7
+
+  deploy-cloudflare-release:
+    name: Deploy Release to Cloudflare R2
+    runs-on: [self-hosted, docker, wasm, emscripten]
+    needs: [build]
+    if: startsWith(github.ref, 'refs/tags/v')
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main-b23d443
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: fontconfig-wasm-Release-simd-ON
-          path: ./
+          name: dist-package
+          path: ./install
 
       - name: Set release version
         id: release-version
@@ -324,115 +127,90 @@ jobs:
       - name: Calculate SHA-256
         id: sha
         run: |
-          WASM_FILE="dist/fontconfig-simd.wasm"
+          WASM_FILE="install/wasm/fontconfig-side.wasm"
           SHA=$(sha256sum "$WASM_FILE" | awk '{print $1}')
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
           echo "${SHA}" > "${WASM_FILE}.sha256"
           echo "🔒 SHA-256: ${SHA}"
 
-      - name: Deploy versioned WASM to Cloudflare R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            VERSION="${{ steps.release-version.outputs.VERSION }}"
+      - name: Deploy to Cloudflare R2
+        run: |
+          VERSION="${{ steps.release-version.outputs.VERSION }}"
+          SHA="${{ steps.sha.outputs.sha }}"
 
-            r2 object put discere-os-wasm-production/fontconfig/@${VERSION}/fontconfig-simd.wasm \
-              --file=dist/fontconfig-simd.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
+          # Deploy SIDE_MODULE to versioned path (immutable)
+          wrangler r2 object put discere-os-wasm-production/fontconfig@${VERSION}/side.wasm \
+            --remote \
+            --file=install/wasm/fontconfig-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
 
-            r2 object put discere-os-wasm-production/fontconfig/@${VERSION}/fontconfig-simd.wasm.sha256 \
-              --file=dist/fontconfig-simd.wasm.sha256 \
-              --content-type=text/plain \
-              --cache-control="public, max-age=31536000, immutable"
+          # Deploy to SHA path (content-addressable)
+          wrangler r2 object put discere-os-wasm-production/fontconfig@sha-${SHA:0:7}/side.wasm \
+            --remote \
+            --file=install/wasm/fontconfig-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy SHA path to Cloudflare R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            SHA="${{ steps.sha.outputs.sha }}"
-            SHA_SHORT="${SHA:0:7}"
-
-            r2 object put discere-os-wasm-production/fontconfig/@sha-${SHA_SHORT}/fontconfig-simd.wasm \
-              --file=dist/fontconfig-simd.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
-
-            r2 object put discere-os-wasm-production/fontconfig/@sha-${SHA_SHORT}/fontconfig-simd.wasm.sha256 \
-              --file=dist/fontconfig-simd.wasm.sha256 \
-              --content-type=text/plain \
-              --cache-control="public, max-age=31536000, immutable"
-
-      - name: Update latest pointer
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            VERSION="${{ steps.release-version.outputs.VERSION }}"
-            echo "${VERSION}" > latest.txt
-
-            r2 object put discere-os-wasm-production/fontconfig/@latest.txt \
-              --file=latest.txt \
-              --content-type=text/plain \
-              --cache-control="public, max-age=300"
-
-      - name: Verify Cloudflare deployment
+      - name: Verify deployment
         run: |
           sleep 15
-          curl -f "https://wasm.discere.cloud/fontconfig@${{ steps.release-version.outputs.VERSION }}/fontconfig-simd.wasm" || exit 1
+          VERSION="${{ steps.release-version.outputs.VERSION }}"
+          curl -I "https://wasm.discere.cloud/fontconfig@${VERSION}/side.wasm" || exit 1
           echo "✅ Cloudflare R2 deployment verified"
 
   deploy-cloudflare-snapshot:
     name: Deploy Snapshot to Cloudflare R2
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, docker, wasm, emscripten]
     needs: [build]
     if: github.ref == 'refs/heads/wasm' && github.event_name == 'push'
+    container:
+      image: ghcr.io/discere-os/wasm-builder:main-b23d443
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download SIMD release build
+      - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: fontconfig-wasm-Release-simd-ON
-          path: ./
+          name: dist-package
+          path: ./install
 
       - name: Set snapshot version
         id: version
-        run: echo "VERSION=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: echo "VERSION=sha-$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: Calculate SHA-256
-        id: sha
+      - name: Calculate SHA-256 and generate metadata
+        id: metadata
         run: |
-          WASM_FILE="dist/fontconfig-simd.wasm"
+          WASM_FILE="install/wasm/fontconfig-side.wasm"
           SHA=$(sha256sum "$WASM_FILE" | awk '{print $1}')
+          SIZE=$(stat -c%s "$WASM_FILE")
+
           echo "sha=${SHA}" >> $GITHUB_OUTPUT
+          echo "size=${SIZE}" >> $GITHUB_OUTPUT
           echo "${SHA}" > "${WASM_FILE}.sha256"
+
           echo "🔒 SHA-256: ${SHA}"
+          echo "📦 Size: $((SIZE / 1024)) KB"
 
-      - name: Deploy snapshot WASM to Cloudflare R2
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: |
-            VERSION="${{ steps.version.outputs.VERSION }}"
+      - name: Deploy snapshot to Cloudflare R2
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
 
-            r2 object put discere-os-wasm-production/fontconfig/@${VERSION}/fontconfig-simd.wasm \
-              --file=dist/fontconfig-simd.wasm \
-              --content-type=application/wasm \
-              --cache-control="public, max-age=31536000, immutable"
-
-            r2 object put discere-os-wasm-production/fontconfig/@${VERSION}/fontconfig-simd.wasm.sha256 \
-              --file=dist/fontconfig-simd.wasm.sha256 \
-              --content-type=text/plain \
-              --cache-control="public, max-age=31536000, immutable"
-
-      - name: Log deployment success
-        run: echo "✅ Snapshot ${{ steps.version.outputs.VERSION }} deployed to Cloudflare R2"
+          # Deploy SIDE_MODULE only (MAIN_MODULE for testing/NPM only)
+          wrangler r2 object put discere-os-wasm-production/fontconfig@${VERSION}/side.wasm \
+            --remote \
+            --file=install/wasm/fontconfig-side.wasm \
+            --content-type=application/wasm \
+            --cache-control="public, max-age=31536000, immutable"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
